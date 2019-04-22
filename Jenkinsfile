@@ -77,15 +77,39 @@ pipeline {
                 }
                 stage("Test on Linux") {
                     agent {
-			docker {
-			    image 'amethystrs/builder-linux:stable'
-			    label 'docker'
-			} 
+			            docker {
+			                image 'amethystrs/builder-linux:stable'
+			                label 'docker'
+			            }
                     }
                     steps {
                         echo 'Beginning tests...'
                         sh 'cargo test --all'
                         echo 'Tests done!'
+                    }
+                }
+                stage('Calculate Coverage') {
+                    environment {
+                        CARGO_HOME = '/home/jenkins/.cargo'
+                        RUSTUP_HOME = '/home/jenkins/.rustup'
+                        RUSTFLAGS = "-D warnings"
+                    }
+                    agent {
+			            docker {
+			                image 'amethystrs/builder-linux:stable'
+			                label 'docker'
+			            }
+                    }
+                    steps {
+                        withCredentials([string(credentialsId: 'codecov_token', variable: 'CODECOV_TOKEN')]) {
+                            echo 'Building to calculate coverage'
+                            sh 'cargo build --all'
+                            echo 'Calculating code coverage...'
+                            sh 'for file in target/debug/amethyst_*[^\\.d]; do mkdir -p \"target/cov/$(basename $file)\"; kcov --exclude-pattern=/.cargo,/usr/lib --verify \"target/cov/$(basename $file)\" \"$file\" || true; done'
+                            echo "Uploading coverage..."
+                            sh "curl -s https://codecov.io/bash | bash -s - -t $CODECOV_TOKEN"
+                            echo "Uploaded code coverage!"
+                        }
                     }
                 }
                 // macOS is commented out due to needing to upgrade the OS, but MacStadium did not do the original install with APFS so we cannot upgrade easily
@@ -105,26 +129,6 @@ pipeline {
                 // }
             }
         }
-        stage('Calculate Coverage') {
-            environment {
-                CARGO_HOME = '/home/jenkins/.cargo'
-                RUSTUP_HOME = '/home/jenkins/.rustup'
-                RUSTFLAGS = "-D warnings"
-            }
-            agent {
-                label 'linux'
-            }
-            steps {
-                withCredentials([string(credentialsId: 'codecov_token', variable: 'CODECOV_TOKEN')]) {
-                    echo 'Building to calculate coverage...'
-                    sh 'cargo build --all'
-                    echo 'Calculating code coverage...'
-                    sh 'for file in target/debug/amethyst_*[^\\.d]; do mkdir -p \"target/cov/$(basename $file)\"; kcov --exclude-pattern=/.cargo,/usr/lib --verify \"target/cov/$(basename $file)\" \"$file\" || true; done'
-                    echo "Uploading coverage..."
-                    sh "curl -s https://codecov.io/bash | bash -s - -t $CODECOV_TOKEN"
-                    echo "Uploaded code coverage!"
-                }
-            }
-        }
+
     }
 }
