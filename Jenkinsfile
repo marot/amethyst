@@ -97,6 +97,7 @@ pipeline {
                     agent {
 			            docker {
 			                image 'amethystrs/builder-linux:stable'
+                            args '--privileged'
 			                label 'docker'
 			            }
                     }
