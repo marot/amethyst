@@ -26,38 +26,38 @@ pipeline {
             }
         }
         stage('Cargo Check') {
-	    parallel {
-		stage("stable") {
-		    environment {
-			RUSTFLAGS = "-D warnings"
-		    }
-		    agent {
-			docker {
-			    image 'amethystrs/builder-linux:stable'
-			    label 'docker'
-			} 
-		    }
-		    steps {
-			echo 'Running Cargo check...'
-			sh 'cargo check --all --all-targets --features sdl_controller,json,saveload'
-		    }
-		}
-		stage("nightly") {
-		    environment {
-			RUSTFLAGS = "-D warnings"
-		    }
-		    agent {
-			docker {
-			    image 'amethystrs/builder-linux:nightly'
-			    label 'docker'
-			} 
-		    }
-		    steps {
-			echo 'Running Cargo check...'
-			sh 'cargo check --all --all-targets --features nightly'
-		    }
-		}
-	    }
+            parallel {
+                stage("stable") {
+                    environment {
+                    RUSTFLAGS = "-D warnings"
+                    }
+                    agent {
+                    docker {
+                        image 'amethystrs/builder-linux:stable'
+                        label 'docker'
+                    } 
+                    }
+                    steps {
+                    echo 'Running Cargo check...'
+                    sh 'cargo check --all --all-targets --features sdl_controller,json,saveload'
+                    }
+                }
+                stage("nightly") {
+                    environment {
+                    RUSTFLAGS = "-D warnings"
+                    }
+                    agent {
+                    docker {
+                        image 'amethystrs/builder-linux:nightly'
+                        label 'docker'
+                    } 
+                    }
+                    steps {
+                    echo 'Running Cargo check...'
+                    sh 'cargo check --all --all-targets --features nightly'
+                    }
+                }
+            }
         }
         stage('Run Tests') {
             parallel {
@@ -105,7 +105,7 @@ pipeline {
                             echo 'Building to calculate coverage'
                             sh 'cargo build --all'
                             echo 'Calculating code coverage...'
-                            sh 'for file in target/debug/amethyst_*[^\\.d]; do mkdir -p \"target/cov/$(basename $file)\"; kcov --exclude-pattern=/.cargo,/usr/lib --verify \"target/cov/$(basename $file)\" \"$file\" || true; done'
+                            sh 'for file in target/debug/libamethyst_*[^\\.d]; do mkdir -p \"target/cov/$(basename $file)\"; kcov --exclude-pattern=/.cargo,/usr/lib --verify \"target/cov/$(basename $file)\" \"$file\" || true; done'
                             echo "Uploading coverage..."
                             sh "curl -s https://codecov.io/bash | bash -s - -t $CODECOV_TOKEN"
                             echo "Uploaded code coverage!"
