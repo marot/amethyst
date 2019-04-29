@@ -1,7 +1,7 @@
 //! An example showing how to create a dispatcher inside of a State.
 
 use amethyst::{
-    ecs::{Dispatcher, DispatcherBuilder},
+    ecs::{Dispatcher, DispatcherBuilder, System},
     prelude::*,
     shrev::EventChannel,
     Error,
@@ -11,6 +11,15 @@ use std::marker::PhantomData;
 
 struct StateA;
 
+pub struct TestSystem;
+impl<'s> System<'s> for TestSystem {
+    type SystemData = ();
+
+    fn run(&mut self, data: Self::SystemData) {
+        println!("TestSystem::run");
+    }
+}
+
 impl SimpleState for StateA {
     fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
         println!("StateA::update()");
@@ -18,7 +27,14 @@ impl SimpleState for StateA {
         // If you do use TransQueue, you will be forced to use the 'static lifetime on your states.
         data.world
             .write_resource::<EventChannel<TransEvent<GameData<'static, 'static>, StateEvent>>>()
-            .single_write(Box::new(|| Trans::Push(Box::new(StateB::default()))));
+            .single_write(Box::new(|| Trans::Push(Box::new(
+                StateB::new(
+                    DispatcherBuilder::new()
+                        .with(TestSystem, "test_system", &[])
+                        .build()
+                )
+            )
+            )));
 
         // You can also use normal Trans at the same time!
         // Those will be executed before the ones in the EventChannel
@@ -34,10 +50,10 @@ struct StateB<'a> {
     _phantom: &'a PhantomData<()>,
 }
 
-impl<'a> Default for StateB<'a> {
-    fn default() -> Self {
+impl<'a> StateB<'a> {
+    fn new(dispatcher: Dispatcher<'static, 'static>) -> Self {
         StateB {
-            dispatcher: DispatcherBuilder::new().build(),
+            dispatcher,
             _phantom: &PhantomData,
         }
     }
